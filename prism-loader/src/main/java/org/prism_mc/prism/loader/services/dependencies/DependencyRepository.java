@@ -43,6 +43,24 @@ import java.util.concurrent.TimeUnit;
  */
 public enum DependencyRepository {
     /**
+     * Aliyun Maven mirror for China.
+     *
+     * <p>This mirror is used for users in China to improve download speed.</p>
+     */
+    ALIYUN_MIRROR("https://maven.aliyun.com/repository/central/") {
+        @Override
+        protected URLConnection openConnection(Dependency dependency) throws IOException, URISyntaxException {
+            URLConnection connection = super.openConnection(dependency);
+
+            // Set a connect/read timeout
+            connection.setConnectTimeout((int) TimeUnit.SECONDS.toMillis(5));
+            connection.setReadTimeout((int) TimeUnit.SECONDS.toMillis(10));
+
+            return connection;
+        }
+    },
+    
+    /**
      * Prism's nexus/maven proxy.
      *
      * <p>This is used to reduce the load on repo.maven.org - I'm told they

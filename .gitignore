@@ -19,3 +19,6 @@ buildSrc/.gradle
 # custom
 /run/
 node_modules
+
+libs/
+参考代码/

@@ -29,6 +29,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.util.BoundingBox;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
+import org.prism_mc.prism.paper.services.confirmation.ConfirmationService;
 import org.prism_mc.prism.paper.services.messages.MessageService;
 import org.prism_mc.prism.paper.services.modifications.state.BlockStateChange;
 import org.prism_mc.prism.paper.utils.BlockUtils;
@@ -47,15 +48,26 @@ public class DrainCommand {
     private final MessageService messageService;
 
     /**
+     * The confirmation service.
+     */
+    private final ConfirmationService confirmationService;
+
+    /**
      * Construct the drain command.
      *
      * @param configurationService The configuration service
      * @param messageService The message service
+     * @param confirmationService The confirmation service
      */
     @Inject
-    public DrainCommand(ConfigurationService configurationService, MessageService messageService) {
+    public DrainCommand(
+        ConfigurationService configurationService,
+        MessageService messageService,
+        ConfirmationService confirmationService
+    ) {
         this.configurationService = configurationService;
         this.messageService = messageService;
+        this.confirmationService = confirmationService;
     }
 
     @Command("drain")
@@ -74,6 +86,7 @@ public class DrainCommand {
                 radius = configurationService.prismConfig().defaults().drainRadius();
             }
 
+            final int finalRadius = radius;
             double x1 = player.getLocation().getBlockX() - radius;
             double y1 = player.getLocation().getBlockY() - radius;
             double z1 = player.getLocation().getBlockZ() - radius;
@@ -82,18 +95,29 @@ public class DrainCommand {
             double z2 = player.getLocation().getBlockZ() + radius;
             BoundingBox boundingBox = new BoundingBox(x1, y1, z1, x2, y2, z2);
 
-            List<BlockStateChange> changes = BlockUtils.removeBlocksByMaterial(
-                player.getWorld(),
-                boundingBox,
-                List.of(Material.LAVA)
-            );
-            int removalCount = changes.size();
+            // Build scope info
+            String scopeInfo = "排除半径 " + finalRadius + " 格内的所有熔岩方块";
 
-            if (removalCount > 0) {
-                messageService.modificationsRemovedBlocks(player, removalCount);
-            } else {
-                messageService.errorNoBlocksRemoved(player);
-            }
+            // Request confirmation
+            confirmationService.requestConfirmation(
+                player,
+                "排除熔岩",
+                scopeInfo,
+                () -> {
+                    List<BlockStateChange> changes = BlockUtils.removeBlocksByMaterial(
+                        player.getWorld(),
+                        boundingBox,
+                        List.of(Material.LAVA)
+                    );
+                    int removalCount = changes.size();
+
+                    if (removalCount > 0) {
+                        messageService.modificationsRemovedBlocks(player, removalCount);
+                    } else {
+                        messageService.errorNoBlocksRemoved(player);
+                    }
+                }
+            );
         }
 
         /**
@@ -108,6 +132,7 @@ public class DrainCommand {
                 radius = configurationService.prismConfig().defaults().drainRadius();
             }
 
+            final int finalRadius = radius;
             double x1 = player.getLocation().getBlockX() - radius;
             double y1 = player.getLocation().getBlockY() - radius;
             double z1 = player.getLocation().getBlockZ() - radius;
@@ -116,18 +141,29 @@ public class DrainCommand {
             double z2 = player.getLocation().getBlockZ() + radius;
             BoundingBox boundingBox = new BoundingBox(x1, y1, z1, x2, y2, z2);
 
-            List<BlockStateChange> changes = BlockUtils.removeBlocksByMaterial(
-                player.getWorld(),
-                boundingBox,
-                List.of(Material.WATER)
-            );
-            int removalCount = changes.size();
+            // Build scope info
+            String scopeInfo = "排除半径 " + finalRadius + " 格内的所有水方块";
 
-            if (removalCount > 0) {
-                messageService.modificationsRemovedBlocks(player, removalCount);
-            } else {
-                messageService.errorNoBlocksRemoved(player);
-            }
+            // Request confirmation
+            confirmationService.requestConfirmation(
+                player,
+                "排除水",
+                scopeInfo,
+                () -> {
+                    List<BlockStateChange> changes = BlockUtils.removeBlocksByMaterial(
+                        player.getWorld(),
+                        boundingBox,
+                        List.of(Material.WATER)
+                    );
+                    int removalCount = changes.size();
+
+                    if (removalCount > 0) {
+                        messageService.modificationsRemovedBlocks(player, removalCount);
+                    } else {
+                        messageService.errorNoBlocksRemoved(player);
+                    }
+                }
+            );
         }
     }
 }

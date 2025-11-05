@@ -248,6 +248,9 @@ public class PrismModule extends AbstractModule {
         // Service - Cache
         bind(CacheService.class).in(Singleton.class);
 
+        // Service - Claims
+        bind(org.prism_mc.prism.paper.services.claims.ClaimsManager.class).asEagerSingleton();
+
         // Service - Configuration
         bind(ConfigurationService.class).toInstance(prism.loader().configurationService());
 

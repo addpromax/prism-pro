@@ -57,7 +57,7 @@ public class DefaultsConfiguration {
      * Constructor.
      */
     public DefaultsConfiguration() {
-        parameters.put("r", "32");
-        parameters.put("since", "3d");
+        // No default parameters - users must explicitly provide them
+        // This prevents accidental modifications with default values
     }
 }

@@ -301,4 +301,40 @@ public interface MessageService {
 
     @Message("prism.wand-switched")
     void wandSwitched(Player player, @Placeholder WandMode wandmode);
+
+    @Message("claims.not_your_claim")
+    void claimsNotYourClaim(CommandSender receiver);
+
+    @Message("claims.wilderness_no_permission")
+    void claimsWildernessNoPermission(CommandSender receiver);
+
+    @Message("prism.confirmation.timeout")
+    void confirmationTimeout(CommandSender receiver);
+
+    @Message("prism.confirmation.confirmed")
+    void confirmationConfirmed(CommandSender receiver);
+
+    @Message("prism.confirmation.cancelled")
+    void confirmationCancelled(CommandSender receiver);
+
+    @Message("prism.confirmation.no-pending")
+    void confirmationNoPending(CommandSender receiver);
+
+    @Message("prism.confirmation.invalid-id")
+    void confirmationInvalidId(CommandSender receiver);
+
+    @Message("prism.confirmation.no-cancel-pending")
+    void confirmationNoCancelPending(CommandSender receiver);
+
+    @Message("prism.help.unknown-topic")
+    void helpUnknownTopic(CommandSender receiver, @Placeholder String topic);
+
+    @Message("prism.error.no-parameters")
+    void errorNoParameters(CommandSender receiver);
+
+    @Message("prism.error.incomplete-parameters")
+    void errorIncompleteParameters(CommandSender receiver);
+
+    @Message("prism.error.invalid-parameters")
+    void errorInvalidParameters(CommandSender receiver);
 }

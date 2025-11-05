@@ -278,13 +278,34 @@ public enum Dependency {
             version,
             checksum,
             null,
-            EnumSet.of(
+            createDefaultRepositories(),
+            relocations
+        );
+    }
+    
+    /**
+     * Creates the default repository list based on geographical location.
+     * If in China, prioritizes Aliyun mirror for faster downloads.
+     *
+     * @return The repository set
+     */
+    private static Set<DependencyRepository> createDefaultRepositories() {
+        if (GeoLocationDetector.isInChina()) {
+            // For users in China, try Aliyun first, then fallback to other mirrors
+            return EnumSet.of(
+                DependencyRepository.ALIYUN_MIRROR,
                 DependencyRepository.PRISM_MIRROR,
                 DependencyRepository.LUCK_MIRROR,
                 DependencyRepository.MAVEN_CENTRAL
-            ),
-            relocations
-        );
+            );
+        } else {
+            // For users outside China, use the original order
+            return EnumSet.of(
+                DependencyRepository.PRISM_MIRROR,
+                DependencyRepository.LUCK_MIRROR,
+                DependencyRepository.MAVEN_CENTRAL
+            );
+        }
     }
 
     Dependency(

@@ -60,8 +60,10 @@ import org.prism_mc.prism.paper.actions.types.PaperActionTypeRegistry;
 import org.prism_mc.prism.paper.commands.AboutCommand;
 import org.prism_mc.prism.paper.commands.CacheCommand;
 import org.prism_mc.prism.paper.commands.ConfigsCommand;
+import org.prism_mc.prism.paper.commands.ConfirmCommand;
 import org.prism_mc.prism.paper.commands.DrainCommand;
 import org.prism_mc.prism.paper.commands.ExtinguishCommand;
+import org.prism_mc.prism.paper.commands.HelpCommand;
 import org.prism_mc.prism.paper.commands.LookupCommand;
 import org.prism_mc.prism.paper.commands.NearCommand;
 import org.prism_mc.prism.paper.commands.PageCommand;
@@ -485,6 +487,54 @@ public class PrismPaper implements Prism {
                 Arrays.asList("chunk", "world", "worldedit")
             );
 
+            // Register help topics auto-suggest
+            commandManager.registerSuggestion(SuggestionKey.of("help-topics"), (sender, context) ->
+                Arrays.asList(
+                    "main",
+                    "commands",
+                    "lookup",
+                    "rollback",
+                    "restore",
+                    "params",
+                    "parameters",
+                    "purge",
+                    "near",
+                    "vault",
+                    "wand",
+                    "preview",
+                    "drain",
+                    "extinguish",
+                    "teleport",
+                    "tp"
+                )
+            );
+
+            // Register time unit suggestions for better tab completion
+            commandManager.registerSuggestion(SuggestionKey.of("time-examples"), (sender, context) ->
+                Arrays.asList("1h", "30m", "1d", "12h", "1w", "2h30m")
+            );
+
+            // Register radius examples
+            commandManager.registerSuggestion(SuggestionKey.of("radius-examples"), (sender, context) ->
+                Arrays.asList("5", "10", "20", "50", "100")
+            );
+
+            // Register common player name suggestions (online players + common targets)
+            commandManager.registerSuggestion(SuggestionKey.of("player-targets"), (sender, context) -> {
+                List<String> suggestions = new ArrayList<>();
+                suggestions.addAll(Bukkit.getOnlinePlayers().stream().map(Player::getName).toList());
+                suggestions.add("#environment");
+                suggestions.add("#fire");
+                suggestions.add("#water");
+                suggestions.add("#lava");
+                return suggestions;
+            });
+
+            // Register wand mode suggestions
+            commandManager.registerSuggestion(SuggestionKey.of("wand-modes"), (sender, context) ->
+                Arrays.asList("inspect", "rollback", "restore")
+            );
+
             commandManager.registerFlags(
                 FlagKey.of("query-flags"),
                 Flag.flag("dl").longFlag("drainlava").argument(Boolean.class).build(),
@@ -496,36 +546,74 @@ public class PrismPaper implements Prism {
 
             commandManager.registerNamedArguments(
                 ArgumentKey.of("query-parameters"),
+                // Basic parameters
                 Argument.forBoolean().name("reversed").build(),
                 Argument.forInt().name("r").build(),
+                Argument.forInt().name("radius").build(), // CoreProtect alias
                 Argument.forString().name("in").suggestion(SuggestionKey.of("ins")).build(),
+                
+                // Time parameters
                 Argument.forString().name("since").build(),
                 Argument.forString().name("before").build(),
+                Argument.forString().name("t").build(), // CoreProtect alias for time
+                Argument.forString().name("time").build(), // CoreProtect alias
+                
+                // Cause/user parameters
                 Argument.forString().name("c").build(),
                 Argument.forString().name("world").suggestion(SuggestionKey.of("worlds")).build(),
+                Argument.forString().name("w").build(), // Short alias for world
+                
+                // Location parameters
                 Argument.forString().name("at").build(),
                 Argument.forString().name("bounds").build(),
+                
+                // ID parameter
                 Argument.listOf(Integer.class).name("id").build(),
+                
+                // Action parameters
                 Argument.listOf(String.class).name("a").suggestion(SuggestionKey.of("actions")).build(),
+                Argument.listOf(String.class).name("action").suggestion(SuggestionKey.of("actions")).build(), // CoreProtect alias
+                
+                // Block parameters
+                Argument.listOf(String.class).name("b").suggestion(SuggestionKey.of("blocks")).build(),
+                Argument.listOf(String.class).name("bc").suggestion(SuggestionKey.of("blocks")).build(),
+                Argument.listOf(String.class).name("block").suggestion(SuggestionKey.of("blocks")).build(), // CoreProtect alias
+                Argument.listOf(String.class).name("blocks").suggestion(SuggestionKey.of("blocks")).build(), // CoreProtect alias
+                
+                // Tag parameters
                 Argument.listOf(String.class).name("btag").suggestion(SuggestionKey.of("blocktags")).build(),
                 Argument.listOf(String.class).name("etag").suggestion(SuggestionKey.of("entitytypetags")).build(),
                 Argument.listOf(String.class).name("itag").suggestion(SuggestionKey.of("itemtags")).build(),
-                Argument.listOf(String.class).name("b").suggestion(SuggestionKey.of("blocks")).build(),
-                Argument.listOf(String.class).name("bc").suggestion(SuggestionKey.of("blocks")).build(),
+                
+                // Item parameters
                 Argument.listOf(Material.class).name("i").build(),
+                Argument.listOf(Material.class).name("item").build(), // CoreProtect alias
+                Argument.listOf(Material.class).name("items").build(), // CoreProtect alias
+                
+                // Entity parameters
                 Argument.listOf(EntityType.class).name("e").build(),
                 Argument.listOf(EntityType.class).name("ec").build(),
+                Argument.listOf(EntityType.class).name("entity").build(), // Alias
+                
+                // Player parameters
                 Argument.listOf(OfflinePlayer.class).name("p").build(),
                 Argument.listOf(OfflinePlayer.class).name("pc").build(),
                 Argument.listOf(OfflinePlayer.class).name("pa").build(),
+                Argument.listOf(OfflinePlayer.class).name("u").build(), // CoreProtect alias
+                Argument.listOf(OfflinePlayer.class).name("user").build(), // CoreProtect alias
+                Argument.listOf(OfflinePlayer.class).name("users").build(), // CoreProtect alias
+                
+                // Descriptor
                 Argument.forString().name("descriptor").build()
             );
 
             commandManager.registerCommand(injectorProvider.injector().getInstance(AboutCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(CacheCommand.class));
+            commandManager.registerCommand(injectorProvider.injector().getInstance(ConfirmCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(ConfigsCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(DrainCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(ExtinguishCommand.class));
+            commandManager.registerCommand(injectorProvider.injector().getInstance(HelpCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(LookupCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(NearCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(PageCommand.class));

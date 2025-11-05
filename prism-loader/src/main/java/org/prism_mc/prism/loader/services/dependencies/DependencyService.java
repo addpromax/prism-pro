@@ -120,6 +120,13 @@ public class DependencyService {
         this.registry = new DependencyRegistry();
         this.cacheDirectory = createDependenciesDirectory(dataPath);
         this.relocationHandler = new RelocationHandler(this);
+        
+        // Log mirror selection info
+        if (GeoLocationDetector.isInChina()) {
+            loggingService.info("Detected location: China. Using Aliyun mirror for faster downloads.");
+        } else {
+            loggingService.info("Using default mirror configuration.");
+        }
     }
 
     /**

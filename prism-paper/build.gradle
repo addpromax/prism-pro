@@ -6,6 +6,14 @@ plugins {
 repositories {
     // WorldEdit
     maven { url = 'https://maven.enginehub.org/repo/' }
+    
+    // Claim protection plugins
+    maven { url = 'https://repo.bg-software.com/repository/api/' }  // SuperiorSkyblock
+    
+    // Local libs directory
+    flatDir {
+        dirs '../libs'
+    }
 }
 
 dependencies {
@@ -32,6 +40,18 @@ dependencies {
     compileOnly project.property('deps.world-edit-bukkit')
     compileOnly project(':prism-api')
     compileOnly project(':prism-loader')
+
+    // Claim protection plugins (compileOnly - provided by server at runtime)
+    // Using local libs folder
+    compileOnly name: 'plotsquared-bukkit-7.5.9-Premium'
+    compileOnly name: 'Residence6.0.1.1'
+    compileOnly name: 'griefdefender-bukkit-3.1.3'
+    compileOnly name: 'Lands-7.16.0'
+    compileOnly name: 'FactionsX-1.2-STABLE'
+    compileOnly name: 'BentoBox-3.9.2'
+    
+    // From Maven repositories
+    compileOnly 'com.bgsoftware:SuperiorSkyblockAPI:2023.3'
 
     implementation project.property('deps.triumph-cmd-bukkit')
     implementation project(':prism-core')

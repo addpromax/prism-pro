@@ -22,13 +22,19 @@ package org.prism_mc.prism.paper.services.wands;
 
 import com.google.inject.Inject;
 import java.util.UUID;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Player;
 import org.prism_mc.prism.api.activities.ActivityQuery;
 import org.prism_mc.prism.api.services.wands.Wand;
 import org.prism_mc.prism.api.services.wands.WandMode;
 import org.prism_mc.prism.api.util.Coordinate;
 import org.prism_mc.prism.loader.services.configuration.ConfigurationService;
+import org.prism_mc.prism.paper.services.claims.ClaimsManager;
 import org.prism_mc.prism.paper.services.lookup.LookupService;
+import org.prism_mc.prism.paper.services.messages.MessageService;
 
 public class InspectionWand implements Wand {
 
@@ -43,6 +49,16 @@ public class InspectionWand implements Wand {
     private final LookupService lookupService;
 
     /**
+     * The claims manager.
+     */
+    private final ClaimsManager claimsManager;
+
+    /**
+     * The message service.
+     */
+    private final MessageService messageService;
+
+    /**
      * The owner.
      */
     private Object owner;
@@ -52,11 +68,20 @@ public class InspectionWand implements Wand {
      *
      * @param configurationService The configuration service
      * @param lookupService The lookup server
+     * @param claimsManager The claims manager
+     * @param messageService The message service
      */
     @Inject
-    public InspectionWand(ConfigurationService configurationService, LookupService lookupService) {
+    public InspectionWand(
+        ConfigurationService configurationService,
+        LookupService lookupService,
+        ClaimsManager claimsManager,
+        MessageService messageService
+    ) {
         this.configurationService = configurationService;
         this.lookupService = lookupService;
+        this.claimsManager = claimsManager;
+        this.messageService = messageService;
     }
 
     @Override
@@ -71,6 +96,46 @@ public class InspectionWand implements Wand {
 
     @Override
     public void use(UUID worldUuid, Coordinate coordinate) {
+        // Check if owner is a player
+        if (!(owner instanceof Player)) {
+            // Console or non-player, allow inspection
+            final ActivityQuery query = ActivityQuery.builder()
+                .worldUuid(worldUuid)
+                .coordinate(coordinate)
+                .limit(configurationService.prismConfig().defaults().perPage())
+                .build();
+
+            lookupService.lookup((CommandSender) owner, query);
+            return;
+        }
+
+        Player player = (Player) owner;
+
+        // Get the world and create location
+        World world = Bukkit.getWorld(worldUuid);
+        if (world == null) {
+            return;
+        }
+
+        Location location = new Location(world, coordinate.x(), coordinate.y(), coordinate.z());
+
+        // Check claim permissions
+        ClaimsManager.InspectDenialReason denialReason = claimsManager.getInspectDenialReason(player, location);
+        
+        if (denialReason != null) {
+            // Player doesn't have permission to inspect here
+            switch (denialReason) {
+                case NOT_YOUR_CLAIM:
+                    messageService.claimsNotYourClaim(player);
+                    break;
+                case NO_WILDERNESS_PERMISSION:
+                    messageService.claimsWildernessNoPermission(player);
+                    break;
+            }
+            return;
+        }
+
+        // Permission granted, perform lookup
         final ActivityQuery query = ActivityQuery.builder()
             .worldUuid(worldUuid)
             .coordinate(coordinate)
