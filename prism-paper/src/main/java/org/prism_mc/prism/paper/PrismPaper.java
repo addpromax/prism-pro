@@ -75,6 +75,7 @@ import org.prism_mc.prism.paper.commands.RollbackCommand;
 import org.prism_mc.prism.paper.commands.TeleportCommand;
 import org.prism_mc.prism.paper.commands.VaultCommand;
 import org.prism_mc.prism.paper.commands.WandCommand;
+import org.prism_mc.prism.paper.integrations.worldedit.WorldEditIntegration;
 import org.prism_mc.prism.paper.listeners.block.BlockBreakListener;
 import org.prism_mc.prism.paper.listeners.block.BlockBurnListener;
 import org.prism_mc.prism.paper.listeners.block.BlockDispenseListener;
@@ -287,6 +288,15 @@ public class PrismPaper implements Prism {
             long servicesTime = System.currentTimeMillis() - servicesStart;
             
             long listenersStart = System.currentTimeMillis();
+
+            // Initialize WorldEdit integration if available (for block logging)
+            // Supports both WorldEdit and FastAsyncWorldEdit (FAWE)
+            if (
+                Bukkit.getPluginManager().getPlugin("WorldEdit") != null ||
+                Bukkit.getPluginManager().getPlugin("FastAsyncWorldEdit") != null
+            ) {
+                injectorProvider.injector().getInstance(WorldEditIntegration.class);
+            }
 
             // Register event listeners - batch registration for better performance
             registerEvents();

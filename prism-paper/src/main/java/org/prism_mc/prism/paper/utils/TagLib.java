@@ -247,8 +247,13 @@ public class TagLib {
         Material.SPORE_BLOSSOM,
         Material.LANTERN,
         Material.SOUL_LANTERN
-    )
-        .append(DETACHABLES, RECURSIVE_BOTTOM_DETACHABLES);
+    ).append(DETACHABLES, RECURSIVE_BOTTOM_DETACHABLES);
+
+    static {
+        if (VersionUtils.atLeast(1, 21, 9)) {
+            BOTTOM_DETACHABLES.append(Tag.LANTERNS);
+        }
+    }
 
     /**
      * All materials that can detach from the side of a block.
@@ -340,7 +345,7 @@ public class TagLib {
 
     static {
         if (VersionUtils.atLeast(1, 21, 9)) {
-            TOP_DETACHABLES.append(Material.COPPER_TORCH);
+            TOP_DETACHABLES.append(Material.COPPER_TORCH).append(Tag.LANTERNS);
         }
     }
 
