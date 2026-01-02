@@ -120,13 +120,6 @@ public class DependencyService {
         this.registry = new DependencyRegistry();
         this.cacheDirectory = createDependenciesDirectory(dataPath);
         this.relocationHandler = new RelocationHandler(this);
-        
-        // Log mirror selection info
-        if (GeoLocationDetector.isInChina()) {
-            loggingService.info("Detected location: China. Using Aliyun mirror for faster downloads.");
-        } else {
-            loggingService.info("Using default mirror configuration.");
-        }
     }
 
     /**
@@ -241,6 +234,17 @@ public class DependencyService {
             return;
         }
 
+        // Check if remapped file exists first (fast path)
+        Path remappedFile = this.cacheDirectory.resolve(dependency.fileName("remapped"));
+        if (Files.exists(remappedFile)) {
+            this.loaded.put(dependency, remappedFile);
+            if (this.registry.shouldAutoLoad(dependency)) {
+                classPathAppender.addJarToClasspath(remappedFile);
+            }
+            return;
+        }
+
+        // Slow path: download and remap
         Path downloadFile = downloadDependency(dependency);
         if (!downloadFile.toString().contains("remapped")) {
             Path file = remapDependency(dependency, downloadFile);
@@ -315,6 +319,9 @@ public class DependencyService {
             return remappedFile;
         }
 
+        // Log remapping for visibility
+        loggingService.debug("Remapping dependency {0}...", dependency.name().toLowerCase(Locale.ENGLISH));
+        
         relocationHandler.remap(originalFile, remappedFile, rules);
 
         // Delete the original download, we don't need it anymore

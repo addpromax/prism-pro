@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.List;
 import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -162,23 +163,11 @@ public class PaperTranslationService implements IMessageSource<CommandSender, St
                             return;
                         }
 
-                        this.loggingService.info(
-                                "Found locale {0} ({1}) in: {2}",
-                                locale.getDisplayName(),
-                                locale,
-                                localeFile
-                            );
                         final SortedProperties properties = new SortedProperties();
 
                         try {
                             this.loadProperties(properties, localeDirectory, localeFile);
                             this.locales.put(locale, properties);
-
-                            this.loggingService.info(
-                                    "Successfully loaded locale {0} ({1})",
-                                    locale.getDisplayName(),
-                                    locale
-                                );
                         } catch (final IOException ex) {
                             this.loggingService.warn(
                                     "Unable to load locale {0} ({1}) from source: {2}",
@@ -214,6 +203,14 @@ public class PaperTranslationService implements IMessageSource<CommandSender, St
         }
 
         GlobalTranslator.translator().addSource(store);
+        
+        // Log summary
+        if (!locales.isEmpty()) {
+            List<String> localeNames = locales.keySet().stream()
+                .map(Locale::toString)
+                .toList();
+            this.loggingService.info("Loaded {0} locale(s): {1}", locales.size(), String.join(", ", localeNames));
+        }
     }
 
     /**

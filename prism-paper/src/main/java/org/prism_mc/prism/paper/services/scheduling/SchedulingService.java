@@ -74,21 +74,33 @@ public class SchedulingService {
         CronDefinition definition = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ);
         cronParser = new CronParser(definition);
 
+        // Suppress Quartz verbose logging by setting system properties
+        System.setProperty("org.quartz.scheduler.skipUpdateCheck", "true");
+        System.setProperty("org.slf4j.simpleLogger.log.org.quartz", "warn");
+        
         Properties quartzProperties = new Properties();
         quartzProperties.put("org.quartz.scheduler.instanceName", "PrismQuartzScheduler");
         quartzProperties.put("org.quartz.threadPool.threadCount", "2");
+        quartzProperties.put("org.quartz.scheduler.skipUpdateCheck", "true");
+        quartzProperties.put("org.quartz.scheduler.makeSchedulerThreadDaemon", "true");
 
         try {
             SchedulerFactory schedulerFactory = new StdSchedulerFactory(quartzProperties);
             scheduler = schedulerFactory.getScheduler();
 
+            int enabledCount = 0;
             for (var commandScheduleConfig : configurationService.prismConfig().purges().commandSchedules()) {
                 if (commandScheduleConfig.enabled()) {
                     scheduleJob(commandScheduleConfig);
+                    enabledCount++;
                 }
             }
 
             scheduler.start();
+            
+            if (enabledCount > 0) {
+                loggingService.info("Scheduler started with {0} scheduled task(s)", enabledCount);
+            }
         } catch (SchedulerException e) {
             loggingService.handleException(e);
         }

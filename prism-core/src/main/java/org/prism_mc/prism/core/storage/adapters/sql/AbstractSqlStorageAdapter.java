@@ -281,12 +281,6 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
         this.hikariPropertiesFile = new File(dataPath.toFile(), "hikari.properties");
 
         this.prefix = configurationService.storageConfig().primaryDataSource().prefix();
-        loggingService.info(
-            "Catalog {0}; Schema {1}; Prefix {2}",
-            configurationService.storageConfig().primaryDataSource().catalog(),
-            configurationService.storageConfig().primaryDataSource().schema(),
-            prefix
-        );
 
         var catalog = new DefaultCatalog(configurationService.storageConfig().primaryDataSource().catalog());
 
@@ -337,7 +331,6 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
 
         // Load any drivers
         HikariConfigFactories.loadDriver(configurationService.storageConfig().primaryStorageType());
-        listDrivers();
     }
 
     /**
@@ -348,7 +341,8 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
     protected boolean connect(HikariConfig hikariConfig, SQLDialect sqlDialect) {
         this.hikariConfig = hikariConfig;
 
-        loggingService.info("Connecting to {0}", hikariConfig.getJdbcUrl());
+        String dbType = configurationService.storageConfig().primaryStorageType().name();
+        loggingService.info("Connecting to {0} database...", dbType);
 
         try {
             dataSource = new HikariDataSource(hikariConfig);
@@ -358,6 +352,7 @@ public abstract class AbstractSqlStorageAdapter implements StorageAdapter {
                 this.queryBuilder = queryBuilderFactory.create(dslContext);
             }
 
+            loggingService.info("Database connection established");
             return true;
         } catch (Exception e) {
             String msg =

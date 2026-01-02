@@ -113,9 +113,12 @@ public class ClaimsManager {
         );
 
         if (providers.isEmpty()) {
-            loggingService.info("No claim protection plugins detected. Inspect will require wilderness permission.");
+            loggingService.info("No claim protection plugins detected");
         } else {
-            loggingService.info("Loaded {0} claim provider(s)", providers.size());
+            List<String> providerNames = providers.stream()
+                .map(p -> p.getClaimPlugin().name())
+                .toList();
+            loggingService.info("Loaded {0} claim provider(s): {1}", providers.size(), String.join(", ", providerNames));
         }
     }
 
@@ -134,8 +137,6 @@ public class ClaimsManager {
             Class<?> clazz = Class.forName(providerClass);
             ClaimsProvider provider = (ClaimsProvider) clazz.getDeclaredConstructor().newInstance();
             providers.add(provider);
-
-            loggingService.info("Loaded claim provider: {0}", provider.getClaimPlugin().name());
         } catch (ClassNotFoundException e) {
             // Plugin not installed, ignore
         } catch (Exception e) {

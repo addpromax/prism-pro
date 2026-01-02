@@ -180,6 +180,15 @@ public class HikariConfigFactories {
     private static HikariConfig createSharedConfig(StorageConfiguration storageConfiguration) {
         HikariConfig hikariConfig = new HikariConfig();
         hikariConfig.setPoolName("prism");
+        
+        // Reduce HikariCP logging
+        hikariConfig.setRegisterMbeans(false);
+        
+        // Optimize connection pool for faster startup
+        hikariConfig.setMinimumIdle(1); // Start with just 1 connection
+        hikariConfig.setMaximumPoolSize(10);
+        hikariConfig.setConnectionTimeout(5000);
+        hikariConfig.setInitializationFailTimeout(-1); // Don't wait for pool initialization
 
         if (storageConfiguration.primaryDataSource() instanceof SqlDataSourceConfiguration sqlConfig) {
             if (sqlConfig.username() != null) {

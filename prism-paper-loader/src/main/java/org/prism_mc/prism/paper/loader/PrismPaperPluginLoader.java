@@ -67,6 +67,10 @@ public class PrismPaperPluginLoader extends JavaPlugin implements PluginLoader {
 
     @Override
     public void onEnable() {
+        // Suppress verbose library logging before any initialization
+        System.setProperty("org.jooq.no-logo", "true");
+        System.setProperty("org.jooq.no-tips", "true");
+        
         // Instantiate the loader
         JarInJarClassLoader loader = new JarInJarClassLoader(getClass().getClassLoader(), JAR_NAME);
 

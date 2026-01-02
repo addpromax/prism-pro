@@ -211,9 +211,33 @@ public class PrismPaper implements Prism {
     }
 
     /**
+     * Suppress verbose logging from third-party libraries.
+     */
+    private void suppressLibraryLogs() {
+        // Suppress logs using Java Util Logging (works for most SLF4J bridges)
+        try {
+            // HikariCP
+            java.util.logging.Logger.getLogger("org.prism_mc.prism.libs.hikari").setLevel(java.util.logging.Level.SEVERE);
+            
+            // JOOQ
+            java.util.logging.Logger.getLogger("org.prism_mc.prism.libs.jooq").setLevel(java.util.logging.Level.SEVERE);
+            
+            // Quartz
+            java.util.logging.Logger.getLogger("org.prism_mc.prism.libs.quartz").setLevel(java.util.logging.Level.SEVERE);
+        } catch (Exception e) {
+            // Ignore if logging configuration fails
+        }
+    }
+
+    /**
      * On enable.
      */
     public void onEnable() {
+        long startTime = System.currentTimeMillis();
+        
+        // Suppress verbose library logging
+        suppressLibraryLogs();
+        
         DependencyService dependencyService = new DependencyService(
             bootstrap.loggingService(),
             bootstrap.loader().configurationService(),
@@ -224,8 +248,6 @@ public class PrismPaper implements Prism {
         dependencyService.loadAllDependencies(platformDependencies());
 
         serializerVersion = (short) DataFixerUtil.getCurrentVersion();
-        bootstrap.loggingService().info("Serializer version: {0}", serializerVersion);
-        bootstrap.loggingService().info("Server version: {0}", VersionUtils.detectedVersion());
 
         injectorProvider = new InjectorProvider(this, bootstrap.loggingService());
 
@@ -249,75 +271,31 @@ public class PrismPaper implements Prism {
 
         String pluginName = this.loaderPlugin().getDescription().getName();
         String pluginVersion = this.loaderPlugin().getDescription().getVersion();
-        bootstrap.loggingService().info("Initializing {0} {1} by viveleroi", pluginName, pluginVersion);
+        
+        long initTime = System.currentTimeMillis() - startTime;
+        bootstrap.loggingService().info("Initializing {0} v{1} (schema: {2}, core: {3}ms)", 
+            pluginName, pluginVersion, serializerVersion, initTime);
 
         if (loaderPlugin().isEnabled()) {
+            long servicesStart = System.currentTimeMillis();
+            
             // Initialize some classes
             recordingService = injectorProvider.injector().getInstance(PaperRecordingService.class);
             purgeService = injectorProvider.injector().getInstance(PurgeService.class);
             injectorProvider.injector().getInstance(SchedulingService.class);
+            
+            long servicesTime = System.currentTimeMillis() - servicesStart;
+            
+            long listenersStart = System.currentTimeMillis();
 
-            // Register event listeners
-            registerEvent(BlockBreakListener.class);
-            registerEvent(BlockBurnListener.class);
-            registerEvent(BlockDispenseListener.class);
-            registerEvent(BlockExplodeListener.class);
-            registerEvent(BlockFadeListener.class);
-            registerEvent(BlockFertilizeListener.class);
-            registerEvent(BlockFormListener.class);
-            registerEvent(BlockFromToListener.class);
-            registerEvent(BlockIgniteListener.class);
-            registerEvent(BlockPistonExtendListener.class);
-            registerEvent(BlockPistonRetractListener.class);
-            registerEvent(BlockPlaceListener.class);
-            registerEvent(BlockSpreadListener.class);
-            registerEvent(EntityBlockFormListener.class);
-            registerEvent(EntityChangeBlockListener.class);
-            registerEvent(EntityDamageByEntityListener.class);
-            registerEvent(EntityDeathListener.class);
-            registerEvent(EntityExplodeListener.class);
-            registerEvent(EntityPickupItemListener.class);
-            registerEvent(EntityPlaceListener.class);
-            registerEvent(EntityTransformListener.class);
-            registerEvent(EntityUnleashListener.class);
-            registerEvent(HangingBreakListener.class);
-            registerEvent(HangingBreakByEntityListener.class);
-            registerEvent(HangingPlaceListener.class);
-            registerEvent(InventoryClickListener.class);
-            registerEvent(InventoryDragListener.class);
-            registerEvent(InventoryMoveItemListener.class);
-            registerEvent(LeavesDecayListener.class);
-            registerEvent(PlayerArmorStandManipulateListener.class);
-            registerEvent(PlayerBedEnterListener.class);
-            registerEvent(PlayerBucketEmptyListener.class);
-            registerEvent(PlayerBucketEntityListener.class);
-            registerEvent(PlayerBucketFillListener.class);
-            registerEvent(PlayerCommandPreprocessListener.class);
-            registerEvent(PlayerDropItemListener.class);
-            registerEvent(PlayerExpChangeListener.class);
-            registerEvent(PlayerHarvestBlockListener.class);
-            registerEvent(PlayerInteractListener.class);
-            registerEvent(PlayerInteractEntityListener.class);
-            registerEvent(PlayerJoinListener.class);
-            registerEvent(PlayerLeashEntityListener.class);
-            registerEvent(PlayerQuitListener.class);
-            registerEvent(PlayerShearEntityListener.class);
-            registerEvent(PlayerTakeLecternBookListener.class);
-            registerEvent(PlayerTeleportListener.class);
-            registerEvent(PlayerUnleashEntityListener.class);
-            registerEvent(ProjectileLaunchListener.class);
-            registerEvent(PortalCreateListener.class);
-            registerEvent(RaidTriggerListener.class);
-            registerEvent(SheepDyeWoolListener.class);
-            registerEvent(SignChangeListener.class);
-            registerEvent(SpongeAbsorbListener.class);
-            registerEvent(StructureGrowListener.class);
-            registerEvent(TntPrimeListener.class);
-            registerEvent(VehicleDestroyListener.class);
-            registerEvent(VehicleEnterListener.class);
-            registerEvent(VehicleExitListener.class);
+            // Register event listeners - batch registration for better performance
+            registerEvents();
+            
+            long listenersTime = System.currentTimeMillis() - listenersStart;
 
             // Register commands
+            long commandsStart = System.currentTimeMillis();
+            
             BukkitCommandManager<CommandSender> commandManager = BukkitCommandManager.create(
                 loaderPlugin(),
                 CommandOptions.Builder::suggestLowercaseEnum
@@ -327,33 +305,133 @@ public class PrismPaper implements Prism {
             var messagingService = injectorProvider.injector().getInstance(MessageService.class);
             var configurationService = injectorProvider.injector().getInstance(ConfigurationService.class);
 
-            commandManager.registerMessage(BukkitMessageKey.CONSOLE_ONLY, (sender, context) -> {
-                messagingService.errorConsoleOnly(sender);
-            });
+            registerCommandMessages(commandManager, messagingService);
+            registerCommandSuggestions(commandManager, configurationService);
+            registerCommandArguments(commandManager);
+            registerCommands(commandManager);
+            
+            long commandsTime = System.currentTimeMillis() - commandsStart;
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            bootstrap.loggingService().info("Startup complete in {0}ms (services: {1}ms, listeners: {2}ms, commands: {3}ms)", 
+                totalTime, servicesTime, listenersTime, commandsTime);
+        }
+    }
+    
+    /**
+     * Register all event listeners in batch.
+     */
+    private void registerEvents() {
+        Class<? extends Listener>[] listeners = new Class[] {
+            BlockBreakListener.class,
+            BlockBurnListener.class,
+            BlockDispenseListener.class,
+            BlockExplodeListener.class,
+            BlockFadeListener.class,
+            BlockFertilizeListener.class,
+            BlockFormListener.class,
+            BlockFromToListener.class,
+            BlockIgniteListener.class,
+            BlockPistonExtendListener.class,
+            BlockPistonRetractListener.class,
+            BlockPlaceListener.class,
+            BlockSpreadListener.class,
+            EntityBlockFormListener.class,
+            EntityChangeBlockListener.class,
+            EntityDamageByEntityListener.class,
+            EntityDeathListener.class,
+            EntityExplodeListener.class,
+            EntityPickupItemListener.class,
+            EntityPlaceListener.class,
+            EntityTransformListener.class,
+            EntityUnleashListener.class,
+            HangingBreakListener.class,
+            HangingBreakByEntityListener.class,
+            HangingPlaceListener.class,
+            InventoryClickListener.class,
+            InventoryDragListener.class,
+            InventoryMoveItemListener.class,
+            LeavesDecayListener.class,
+            PlayerArmorStandManipulateListener.class,
+            PlayerBedEnterListener.class,
+            PlayerBucketEmptyListener.class,
+            PlayerBucketEntityListener.class,
+            PlayerBucketFillListener.class,
+            PlayerCommandPreprocessListener.class,
+            PlayerDropItemListener.class,
+            PlayerExpChangeListener.class,
+            PlayerHarvestBlockListener.class,
+            PlayerInteractListener.class,
+            PlayerInteractEntityListener.class,
+            PlayerJoinListener.class,
+            PlayerLeashEntityListener.class,
+            PlayerQuitListener.class,
+            PlayerShearEntityListener.class,
+            PlayerTakeLecternBookListener.class,
+            PlayerTeleportListener.class,
+            PlayerUnleashEntityListener.class,
+            ProjectileLaunchListener.class,
+            PortalCreateListener.class,
+            RaidTriggerListener.class,
+            SheepDyeWoolListener.class,
+            SignChangeListener.class,
+            SpongeAbsorbListener.class,
+            StructureGrowListener.class,
+            TntPrimeListener.class,
+            VehicleDestroyListener.class,
+            VehicleEnterListener.class,
+            VehicleExitListener.class
+        };
+        
+        // Cache frequently accessed objects
+        var pluginManager = loaderPlugin().getServer().getPluginManager();
+        var injector = injectorProvider.injector();
+        var plugin = loaderPlugin();
+        
+        // Register all listeners
+        for (Class<? extends Listener> listenerClass : listeners) {
+            Listener listener = injector.getInstance(listenerClass);
+            pluginManager.registerEvents(listener, plugin);
+        }
+    }
+    
+    /**
+     * Register command messages.
+     */
+    private void registerCommandMessages(BukkitCommandManager<CommandSender> commandManager, MessageService messagingService) {
+        commandManager.registerMessage(BukkitMessageKey.CONSOLE_ONLY, (sender, context) -> {
+            messagingService.errorConsoleOnly(sender);
+        });
 
-            commandManager.registerMessage(BukkitMessageKey.INVALID_ARGUMENT, (sender, context) -> {
-                messagingService.errorInvalidParameter(sender);
-            });
+        commandManager.registerMessage(BukkitMessageKey.INVALID_ARGUMENT, (sender, context) -> {
+            messagingService.errorInvalidParameter(sender);
+        });
 
-            commandManager.registerMessage(BukkitMessageKey.NO_PERMISSION, (sender, context) -> {
-                messagingService.errorInsufficientPermission(sender);
-            });
+        commandManager.registerMessage(BukkitMessageKey.NO_PERMISSION, (sender, context) -> {
+            messagingService.errorInsufficientPermission(sender);
+        });
 
-            commandManager.registerMessage(BukkitMessageKey.NOT_ENOUGH_ARGUMENTS, (sender, context) -> {
-                messagingService.errorUnknownCommand(sender);
-            });
+        commandManager.registerMessage(BukkitMessageKey.NOT_ENOUGH_ARGUMENTS, (sender, context) -> {
+            messagingService.errorUnknownCommand(sender);
+        });
 
-            commandManager.registerMessage(BukkitMessageKey.PLAYER_ONLY, (sender, context) -> {
-                messagingService.errorPlayerOnly(sender);
-            });
+        commandManager.registerMessage(BukkitMessageKey.PLAYER_ONLY, (sender, context) -> {
+            messagingService.errorPlayerOnly(sender);
+        });
 
-            commandManager.registerMessage(BukkitMessageKey.TOO_MANY_ARGUMENTS, (sender, context) -> {
-                messagingService.errorUnknownCommand(sender);
-            });
+        commandManager.registerMessage(BukkitMessageKey.TOO_MANY_ARGUMENTS, (sender, context) -> {
+            messagingService.errorUnknownCommand(sender);
+        });
 
-            commandManager.registerMessage(BukkitMessageKey.UNKNOWN_COMMAND, (sender, context) -> {
-                messagingService.errorUnknownCommand(sender);
-            });
+        commandManager.registerMessage(BukkitMessageKey.UNKNOWN_COMMAND, (sender, context) -> {
+            messagingService.errorUnknownCommand(sender);
+        });
+    }
+    
+    /**
+     * Register command suggestions.
+     */
+    private void registerCommandSuggestions(BukkitCommandManager<CommandSender> commandManager, ConfigurationService configurationService) {
 
             // Register action types auto-suggest
             commandManager.registerSuggestion(SuggestionKey.of("actions"), (sender, context) -> {
@@ -534,7 +612,12 @@ public class PrismPaper implements Prism {
             commandManager.registerSuggestion(SuggestionKey.of("wand-modes"), (sender, context) ->
                 Arrays.asList("inspect", "rollback", "restore")
             );
-
+    }
+    
+    /**
+     * Register command arguments.
+     */
+    private void registerCommandArguments(BukkitCommandManager<CommandSender> commandManager) {
             commandManager.registerFlags(
                 FlagKey.of("query-flags"),
                 Flag.flag("dl").longFlag("drainlava").argument(Boolean.class).build(),
@@ -606,7 +689,12 @@ public class PrismPaper implements Prism {
                 // Descriptor
                 Argument.forString().name("descriptor").build()
             );
-
+    }
+    
+    /**
+     * Register commands.
+     */
+    private void registerCommands(BukkitCommandManager<CommandSender> commandManager) {
             commandManager.registerCommand(injectorProvider.injector().getInstance(AboutCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(CacheCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(ConfirmCommand.class));
@@ -625,7 +713,6 @@ public class PrismPaper implements Prism {
             commandManager.registerCommand(injectorProvider.injector().getInstance(RollbackCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(TeleportCommand.class));
             commandManager.registerCommand(injectorProvider.injector().getInstance(WandCommand.class));
-        }
     }
 
     /**
